@@ -1,0 +1,65 @@
+{
+    "ko_KR": {
+        "login_username": "유저이름",
+        "login_password": "비밀번호",
+        "login_login": "로그인",
+
+        "file_dialog_select_directory": "디렉토리를 선택하세요",
+
+        "alert_download_complete": "다운로드 완료! ({})",
+        "alert_no_tag": "검색하려면 태그를 입력하세요",
+        "alert_no_user": "검색하려면 유저 이름을 입력하세요",
+        "alert_download_failed": "인터넷 오류로 다운로드에 실패했습니다. ({})", 
+        "alert_already_download": "이미 다운로드 중입니다. ({})",
+
+        "context_download": "다운로드",
+        "context_show_detail": "상세 정보 보기",
+
+        "filter_tag": "태그",
+
+        "filter_order": "순서",
+        "filter_order_date_a": "날짜(오름차순)",
+        "filter_order_date_d": "날짜(내림차순)",
+        "filter_order_popular": "인기순",
+        "filter_order_popular_m": "인기순(남성)",
+        "filter_order_popular_f": "인기순(여성)",
+
+        "filter_safe": "전연령",
+        "filter_all": "모두",
+        "filter_r18": "R-18",
+
+        "filter_username": "유저이름",
+
+        "filter_search": "검색",
+        "filter_tag_search": "태그 검색",
+        "filter_follow_latest": "팔로우 유저의 작품",
+        "filter_user_search": "유저 검색",
+
+        "preference_hide_r18": "R-18 일러스트의 섬네일을 숨깁니다.",
+        "preference_show_r18": "R-18 일러스트의 섬네일을 보여줍니다.",
+        "preference_hide_r18_tooltip": "섬네일을 숨길 경우, 흐림 처리되어 보여집니다.",
+
+        "preference_download_path": "다운로드 경로",
+
+        "preference_directory_format": "디렉토리 이름 형식",
+        "preference_directory_format_tooltip": "%(id)d는 일러스트의 ID, %(title)s는 일러스트의 제목으로 대체됩니다.",
+
+        "preference_file_format": "파일 이름 형식",
+        "preference_file_format_tooltip": "%(id)d는 일러스트의 ID, %(idx)d는 페이지 번호, %(ext)s는 확장자로 대체됩니다.",
+
+        "status_no_download": "다운로드 없음...",
+        "status_download_complete": "다운로드 완료! (전체 {2}건 중 {0}건 실패 / {1}건 성공)",
+        "status_download_now": "다운로드 중... (전체 {2}건 중 {0}건 실패 / {1}건 성공)",
+
+        "time_just_before": "방금 전",
+        "time_min_ago": "{}분 전",
+        "time_hour_ago": "{}시간 전",
+        "time_day_ago": "{}일 전",
+
+        "option": "옵션",
+        "preference": "설정"
+    },
+    "en_US": {
+
+    }
+}
