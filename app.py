@@ -8,6 +8,12 @@ from PyQt5.QtWidgets import *
 
 # 스레드가 최대 네 개이므로 네 개의 작업이 이미 수행중이라면 이후 추가되는 작업들이 다운로드를 위한 준비작업조차 실행되지 않는 경우가 잦다.
 # 토스트에서 parent가 NoneType일 때 터지는 문제도 고쳐야 한다. 아무래도 activeWindow를 고쳐야 할 것으로 보임.
+# 이거 고쳤는지 기억이 안 난다.
+
+# 로딩 순서
+#     1. conf.py, api.py 등 위젯 이전에 로딩되는 파일들
+#     2. Widgets.py에 포함된 위젯 파일들
+#     3. 앱
 
 # QT default settings.
 os.environ['QT_DEVICE_PIXEL_RATIO'] = '0'
@@ -27,12 +33,15 @@ app.setStyleSheet(stylesheet)
 
 from Widgets.Widgets import *
 
+download_set = DownloadSet()
+
+IllustWidget.download_set = download_set
+
 class MainWidget(QWidget):
     def __init__(self):
         super().__init__()
 
         self._append = True
-        self._detail = None
 
         self._fn = None
         self._args = ()
@@ -40,45 +49,55 @@ class MainWidget(QWidget):
         self._finished = None
 
         self.initUI()
-
-    def closeEvent(self, event: QCloseEvent):
-        if self._detail is not None:
-            self._detail.close()
-            self._detail.deleteLater()
    
     def initUI(self):
-        def callback(exception):
-            if isinstance(exception, StopIteration):
-                self.widget_list.deleteDummy()
-            else:
-                raise exception
+        def download(illust_object, path):
+            id = illust_object.id
 
-            self._append = True
+            download_manager.addDownloading()
 
-        def set_tag(tag):
-            self.filter.setFilter(SearchState(0), {'tags': [tag]})
+            def finished():
+                download_set.remove(id)
+                download_manager.addComplete()
 
-        def set_user(args):
-            self.filter.setFilter(SearchState(2), 
-                {'pixmap': args[0], 'user_id': args[1]})
+                self.showToast(
+                    lang['alert_download_complete'].format(illust_object), 
+                    QColor(Qt.lightGray)
+                )
+
+            def exception_handle(exception):
+                download_set.remove(id)
+                download_manager.addFailed()
+
+                self.showToast(
+                    lang['alert_download_failed'].format(illust_object),
+                    QColor(Qt.red)
+                )
+
+            worker = Worker(api.download_illust, exception_handle,
+                args=(illust_object.id, path),
+                kwargs = {
+                    'dir_name': conf['dir_name'],
+                    'file_name': conf['file_name'],
+                    'callback': download_set[id].setProgress
+                }
+            )
+            worker.signal.finished.connect(finished)
+
+            thread_pool.start(worker)
+
+        def search_from_widget(state: int, args: dict):
+            self.filter.setFilter(SearchState(state), args)
 
         def search_illust(gen):
             def finished(item_list):
-                def show_detail(illust):
-                    if self._detail is not None:
-                        self._detail.close()
-                        self._detail.deleteLater()
-                    
-                    self._detail = IllustDialog(illust)
-                    self._detail.clicked.connect(set_tag)
-                    self._detail.show()
-
                 for item in item_list:
                     widget = IllustWidget(item)
 
                     widget.toast.connect(self.showToast)
-                    widget.set_user.connect(set_user)
-                    widget.show_detail.connect(show_detail)
+                    widget.download.connect(download)
+
+                    widget.search_from_widget.connect(search_from_widget)
 
                     self.widget_list.addItem(widget)
 
@@ -95,10 +114,10 @@ class MainWidget(QWidget):
             self.widget_list.addDummy()
 
         def search_user(user_name):
-            def finisehd(user_list):
+            def finished(user_list):
                 for user in user_list:
                     widget = UserWidget(user)
-                    widget.clicked.connect(set_user)
+                    widget.clicked.connect(search_from_widget)
 
                     self.widget_list.addItem(widget)
                 
@@ -108,7 +127,7 @@ class MainWidget(QWidget):
             self._fn = api.get_user_by_name
             self._args = (user_name, )
 
-            self._finished = finisehd
+            self._finished = finished
 
             thread_pool.waitForDone()
 
@@ -116,6 +135,14 @@ class MainWidget(QWidget):
             self.widget_list.addDummy()
 
         def appendResult():
+            def callback(exception):
+                if isinstance(exception, StopIteration):
+                    self.widget_list.deleteDummy()
+                else:
+                    raise exception
+
+                self._append = True
+
             if self._append:
                 self._append = False
 

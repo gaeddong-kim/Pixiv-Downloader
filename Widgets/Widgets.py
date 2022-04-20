@@ -8,6 +8,7 @@ from Widgets.Worker import *
 from Widgets.Loading import *
 from Widgets.ListWidget import *
 from Widgets.UserWidget import *
+from Widgets.DownloadSet import *
 from Widgets.ResizeLabel import *
 from Widgets.FilterWidget import *
 from Widgets.IllustWidget import *

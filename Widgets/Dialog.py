@@ -22,7 +22,7 @@ __all__ = [
 
 _platform = platform.system()
 if _platform == 'Windows':
-	sys.path.append('T:\\private\\Programming\\pyxiv\\api')
+	sys.path.append('T:\\private\\_Programming\\pyxiv\\api')
 elif _platform == 'Linux':
 	sys.path.append('/media/taeikim/DATA1 : 2TB/private/Programming/Pyxiv/api')
 
@@ -56,7 +56,7 @@ class LoginDialog(QDialog):
                     self.cookie = res
                     self.close()
 
-            worker = Worker(get_cookie, 
+            worker = Worker(get_cookie, callback=print,
                 args=(conf['username'], conf['password']))
             worker.signal.finished.connect(finished)
 

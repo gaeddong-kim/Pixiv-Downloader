@@ -1,6 +1,5 @@
 import sys
 import platform
-import requests
 
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -8,6 +7,8 @@ from PyQt5.QtWidgets import *
 
 from PIL.ImageQt import ImageQt
 
+from Widgets.Dialog import IllustDialog
+from Widgets.DownloadSet import *
 from Widgets.Image import *
 from Widgets.Worker import *
 from Widgets.Loading import *
@@ -20,7 +21,7 @@ from api import api, download_manager
 
 _platform = platform.system()
 if _platform == 'Windows':
-	sys.path.append('T:\\private\\Programming\\pyxiv\\api')
+	sys.path.append('T:\\private\\_Programming\\pyxiv\\api')
 elif _platform == 'Linux':
 	sys.path.append('/media/taeikim/DATA1 : 2TB/private/Programming/Pyxiv/api')
 
@@ -137,14 +138,25 @@ class IllustThumbWidget(LoadingWidget, ImageWidget):
 
         return super().event(event)
 
+class UserNameLabel(ResizeLabel):
+    clicked = pyqtSignal()
+
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
+
 class IllustWidget(QGroupBox):
     toast = pyqtSignal(str, QColor)
+    download = pyqtSignal(Illust, str)
 
-    set_user = pyqtSignal(tuple)
-    show_detail = pyqtSignal(Illust)
-    
+    search_from_widget = pyqtSignal(int, dict)
+
     download_icon = QIcon('./icon/download.png')
     download_complete_icon = QIcon('./icon/download_complete.png')
+
+    detail_widget = None
+    download_set = None
 
     def __init__(self, illust_object, parent=None):
         super().__init__(parent)
@@ -153,33 +165,31 @@ class IllustWidget(QGroupBox):
         self.thumb = None
 
         self._thumb_loaded = False
-        self._is_downloading = False
 
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.initUI()
 
     def initUI(self):
-        def user_name_clicked(event: QMouseEvent):
+        def user_search():
             def func():
                 image = api.download_user_thumb(
                     self.illust_object['author']['id'])
                 image = QPixmap.fromImage(ImageQt(image))
 
-                return (image, self.illust_object['author'])
+                return { 'pixmap': image, 'user_data': self.illust_object['author'] }
 
-            if event.button() == Qt.LeftButton:
-                worker = Worker(func)
-                worker.signal.finished.connect(self.set_user.emit)
+            worker = Worker(func)
+            worker.signal.finished.connect(lambda d: self.search_from_widget.emit(2, d))
 
-                thread_pool.start(worker)
+            thread_pool.start(worker)
 
         self.image = IllustThumbWidget(self.illust_object.isR18)
         self.image.setFixedSize(80, 80)
 
         self.title_label = ResizeLabel(self.illust_object.title)
         
-        self.author_label = ResizeLabel(self.illust_object.author.name)
-        self.author_label.mousePressEvent = user_name_clicked
+        self.author_label = UserNameLabel(self.illust_object.author.name)
+        self.author_label.clicked.connect(user_search)
 
         self.page_count = QLabel(str(self.illust_object['pageCount']))
 
@@ -199,82 +209,70 @@ class IllustWidget(QGroupBox):
 
         self.setLayout(layout)
 
-    def download(self, path):
+    @property
+    def _is_downloading(self):
+        return (self.illust_object.id in self.download_set)
+
+    def addEntry(self):
+        def enqueue_download():
+            self.image.setLoading(True)
+            self.image.setComplete(False)
+            self.image.setProgress(0.0)
+
+        def dequeue_download():
+            self.image.setLoading(False)
+            self.image.setComplete(True)
+            self.image.setProgress(0.0)
+        
+        entry = DownloadEntry()
+
+        entry.progressChanged.connect(self.image.setProgress)
+        entry.downloadStart.connect(enqueue_download)
+        entry.downloadEnd.connect(dequeue_download)
+            
+        self.download_set.add(self.illust_object.id, entry)
+
+    def mouseDoubleClickEvent(self, event: QMouseEvent):
+        path = conf.get('download_path', './')
+        
         if self._is_downloading:
             self.toast.emit(
                 lang['alert_already_download'].format(self.illust_object),
                 Qt.red)
             return
 
-        self._is_downloading = True
-
-        self.image.setLoading(True)
-        self.image.setComplete(False)
-        self.image.setProgress(0.0)
-
-        download_manager.addDownloading()
-
-        def finished():
-            self._is_downloading = False
-
-            self.image.setLoading(False)
-            self.image.setComplete(True)
-            self.image.setProgress(0.0)
-
-            download_manager.addComplete()
-
-            self.toast.emit(
-                lang['alert_download_complete'].format(self.illust_object), 
-                QColor(Qt.lightGray))
-
-        def callback(exception):
-            if isinstance(exception, requests.exceptions.ConnectionError):
-                self.toast.emit(
-                    lang['alert_download_failed'].format(self.illust_object),
-                    QColor(Qt.red))
-
-                self._is_downloading = False
-
-                self.image.setLoading(False)
-                self.image.setProgress(0.0)
-                self.image.setComplete(False)
-                
-                download_manager.addFailed()
-
-        worker = Worker(api.download_illust, callback,
-            args=(self.illust_object['id'], path), 
-            kwargs={
-                'dir_name':conf['dir_name'], 
-                'file_name':conf['file_name'],
-                'callback':self.image.setProgress
-        })
-        worker.signal.finished.connect(finished)
-
-        thread_pool.start(worker)
-
-    def mouseDoubleClickEvent(self, event: QMouseEvent):
-        path = conf.get('download_path', './')
-        self.download(path)
+        self.addEntry()
+        self.download.emit(self.illust_object, path)
 
     def contextMenuEvent(self, event: QContextMenuEvent):
-        # 다운로드를 맨 위까지 올려보내는가, 아니면 그냥 여기서 처리하는가?
-
-        # 위로 올려보내게 되면 다운로드 알림의 처리가 깔끔해지고
-        # 여기서 처리하게 되면 그냥 전체적으로 깔끔해지게 된다.
-        # 둘 다 하면 그냥 어중간하고.
-
-        # 에라 모르겠다 시발 그냥 여기서 하자
         def download():
+            if self._is_downloading:
+                self.toast.emit(
+                    lang['alert_already_download'].format(self.illust_object),
+                    Qt.red)
+                return
+            
+            # self.download.emit(self.illust_object)
             path = QFileDialog.getExistingDirectory(self, 
                 lang['file_dialog_select_directory'], 
                 conf.get('download_path', './'))
             if path == '': return
 
             conf['download_path'] = path
-            self.download(path)
+            
+            self.addEntry()
+            self.download.emit(self.illust_object, path)
 
         def show_detail():
-            self.show_detail.emit(self.illust_object)
+            if self.detail_widget is not None:
+                self.detail_widget.close()
+                self.detail_widget.deleteLater()
+
+            self.detail_widget = IllustDialog(self.illust_object)
+            self.detail_widget.clicked.connect(
+                lambda tag: self.search_from_widget.emit(0, {'tags': [tag]})
+            )
+            self.detail_widget.show()
 
         menu = QMenu()
         menu.setWindowFlags(Qt.FramelessWindowHint | Qt.Popup)

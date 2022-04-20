@@ -16,7 +16,7 @@ __all__ = [
 ]
 
 class UserWidget(QGroupBox):
-    clicked = pyqtSignal(tuple)
+    clicked = pyqtSignal(int, dict)
 
     def __init__(self, user_object, parent=None):
         super().__init__(parent)
@@ -57,7 +57,7 @@ class UserWidget(QGroupBox):
     def mousePressEvent(self, event: QMouseEvent):
         if ((self.thumb is not None) and (self.user_data is not None) and 
             (event.button() == Qt.LeftButton)):
-            self.clicked.emit((self.thumb, self.user_data))
+            self.clicked.emit(2, {'pixmap': self.thumb, 'user_data': self.user_data})
 
     def paintEvent(self, event: QPaintEvent):
         opt = QStyleOption()

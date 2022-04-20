@@ -158,14 +158,14 @@ class UserSearchBox(QGroupBox):
         return self._selected_user
 
     def setArgs(self, args):
-        self.setUser(args['pixmap'], args['user_id'])
+        self.setUser(args['pixmap'], args['user_data'])
 
     def getArgs(self):
         if self.User() is None:
             if self.getName() == '':
                 raise FilterWidget.NoArgsError(lang['alert_no_user'],
                     QColor.fromRgb(0xFF1F1F))
-            raise self.UserNotSelectedError(self.getName())
+            raise UserNotSelectedError(self.getName())
 
         return { 'user_id': self.User()['id'] }
 

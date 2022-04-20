@@ -13,7 +13,7 @@ from config import conf, lang
 
 _platform = platform.system()
 if _platform == 'Windows':
-	sys.path.append('T:\\private\\Programming\\pyxiv\\api')
+	sys.path.append('T:\\private\\_Programming\\pyxiv\\api')
 elif _platform == 'Linux':
 	sys.path.append('/media/taeikim/DATA1 : 2TB/private/Programming/Pyxiv/api')
 
